@@ -17,6 +17,7 @@ namespace ProducerFrameworkMod.Controllers
                 , "Workbench", "Tapper", "Singing Stone", "Drum Block", "Flute Block", "Statue Of Endless Fortune"
                 , "Slime Ball", "Staircase", "Junimo Kart Arcade System", "Prairie King Arcade System" };
 
+        private static readonly Dictionary<string, object> RulesCache = new Dictionary<string, object>();
         private static readonly Dictionary<Tuple<string, object>, ProducerRule> RulesRepository = new Dictionary<Tuple<string, object>, ProducerRule>();
         private static readonly Dictionary<string, ProducerConfig> ConfigRepository = new Dictionary<string, ProducerConfig>()
         {
@@ -281,7 +282,8 @@ namespace ProducerFrameworkMod.Controllers
 
         private static void AddRuleToRepository(ProducerRule producerRule)
         {
-            Tuple<string, object> ruleKey = new Tuple<string, object>(producerRule.ProducerName, producerRule.InputKey);
+            string producerName = producerRule.ProducerName;
+            Tuple<string, object> ruleKey = new Tuple<string, object>(producerName, producerRule.InputKey);
             if (RulesRepository.ContainsKey(ruleKey))
             {
                 ProducerRule oldRule = RulesRepository[ruleKey];
@@ -310,6 +312,7 @@ namespace ProducerFrameworkMod.Controllers
                     }
                 }
             }
+            RulesCache[producerName] = producerRule.InputKey;
             RulesRepository[ruleKey] = producerRule;
         }
 
@@ -507,7 +510,8 @@ namespace ProducerFrameworkMod.Controllers
         /// <returns>true if there is a rule for the producer</returns>
         public static bool HasProducerRule(string producerName)
         {
-            return RulesRepository.Keys.Any(k => k.Item1 == producerName);
+            return RulesCache.ContainsKey(producerName);
+            //return RulesRepository.Keys.Any(k => k.Item1 == producerName);
         }
 
         /// <summary>
@@ -517,7 +521,9 @@ namespace ProducerFrameworkMod.Controllers
         /// <returns>true if there is a rule with input for the producer</returns>
         public static bool HasProducerRuleWithInput(string producerName)
         {
-            return RulesRepository.Keys.Any(k => k.Item1 == producerName && k.Item2 != null);
+            RulesCache.TryGetValue(producerName, out object value);
+            return value != null;
+            //return RulesRepository.Keys.Any(k => k.Item1 == producerName && k.Item2 != null);
         }
 
         /// <summary>
@@ -533,10 +539,13 @@ namespace ProducerFrameworkMod.Controllers
 
         public static List<ProducerRule> GetProducerRules(string producerName)
         {
-            return RulesRepository
-                .Where(e => e.Key.Item1 == producerName)
-                .Select(e=>e.Value)
-                .ToList();
+            if (!RulesCache.TryGetValue(producerName, out object inputKey)) return new List<ProducerRule>();
+            var key = new Tuple<string, object>(producerName, inputKey);
+            return new List<ProducerRule> { RulesRepository[key] };
+            //return RulesRepository
+            //    .Where(e => e.Key.Item1 == producerName)
+            //    .Select(e=>e.Value)
+            //    .ToList();
         }
 
         public static List<ProducerRule> GetProducerRules()
